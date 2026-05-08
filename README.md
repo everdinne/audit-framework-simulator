@@ -1,3 +1,14 @@
+---
+title: Audit Framework Simulator
+emoji: ⚖
+colorFrom: yellow
+colorTo: gray
+sdk: streamlit
+sdk_version: "1.32.0"
+app_file: app.py
+pinned: false
+---
+
 # Audit Framework Simulator
 
 An interactive system examining how ML audit outcomes change depending on the institutional assumptions embedded within the evaluation framework itself.
