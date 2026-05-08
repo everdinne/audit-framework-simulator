@@ -396,6 +396,17 @@ def main():
             step=0.05,
         )
 
+        st.markdown('<div class="section-label" style="margin-top:1.2rem;">Regulatory Context</div>',
+                    unsafe_allow_html=True)
+        st.markdown("""
+        <div style="font-size:0.75rem; color:#6d6560; line-height:1.8;">
+            Audit regime logic draws on evaluation principles embedded in:<br><br>
+            <b style="color:#3a3530;">EU AI Act</b> — risk classification and conformity assessment obligations for high-risk systems<br><br>
+            <b style="color:#3a3530;">GDPR Art. 22</b> — automated decision-making and non-discrimination requirements<br><br>
+            <b style="color:#3a3530;">DSA (VLOP)</b> — transparency and systemic risk assessment for large platforms
+        </div>
+        """, unsafe_allow_html=True)
+
     metrics = compute_metrics(y_test, y_prob, sex_test, threshold)
     passed, rationale = evaluate_audit(metrics, mode_config)
 
