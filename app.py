@@ -348,23 +348,43 @@ def main():
     with st.spinner("Loading dataset and training model..."):
         model, X_test, y_test, sex_test, y_prob = train_model("Logistic Regression")
 
-    # Layout
-    col_left, col_right = st.columns([1, 2])
+    # ── THREE COLUMN LAYOUT ──
+    col_left, col_mid, col_right = st.columns([1, 1, 1.4])
 
     with col_left:
-        st.markdown('<div class="section-label">Audit Configuration</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-label">Audit Regime</div>', unsafe_allow_html=True)
 
         selected_mode = st.selectbox(
-            "Select Governance Mode",
+            "Select regime",
             options=list(GOVERNANCE_MODES.keys()),
-            help="Each mode embeds different institutional priorities into the evaluation framework."
+            label_visibility="collapsed"
         )
 
         mode_config = GOVERNANCE_MODES[selected_mode]
-        st.markdown(f"""
-        <div class="mode-card">
-            <div class="mode-name">{selected_mode}</div>
-            <div class="mode-desc">{mode_config['description']}</div>
+
+        for mode_name, cfg in GOVERNANCE_MODES.items():
+            is_selected = mode_name == selected_mode
+            border_color = "#c8a030" if is_selected else "#e4e0dc"
+            bg = "rgba(200,160,48,0.05)" if is_selected else "white"
+            text_color = "#1a1410" if is_selected else "#6d6560"
+            st.markdown(f"""
+            <div style="border:1px solid {border_color}; border-left:3px solid {border_color};
+                        padding:.7rem .9rem; margin-bottom:.4rem; background:{bg};">
+                <div style="font-size:0.8rem; font-weight:600; color:{text_color};">{mode_name}</div>
+                <div style="font-size:0.72rem; color:#6d6560; margin-top:.2rem; line-height:1.5;">
+                    {cfg['description']}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown('<div class="section-label" style="margin-top:1.2rem;">Model</div>',
+                    unsafe_allow_html=True)
+        st.markdown("""
+        <div style="font-size:0.78rem; color:#6d6560; line-height:1.8;">
+            UCI Adult Income<br>
+            Logistic Regression<br>
+            Predict income &gt; $50K<br>
+            Protected: Sex (M/F)
         </div>
         """, unsafe_allow_html=True)
 
@@ -374,70 +394,77 @@ def main():
             max_value=0.9,
             value=float(mode_config["threshold"]),
             step=0.05,
-            help="Probability threshold for positive classification. Adjusted by governance mode."
         )
 
-        st.markdown('<div class="section-label" style="margin-top:1.5rem;">About the Model</div>',
-                    unsafe_allow_html=True)
-        st.markdown("""
-        <div style="font-size:0.82rem; color:#6d6560; line-height:1.7;">
-            <b>Dataset:</b> UCI Adult Income<br>
-            <b>Model:</b> Logistic Regression<br>
-            <b>Task:</b> Predict income > $50K<br>
-            <b>Protected attribute:</b> Sex (Male / Female)<br>
-            <b>Test set:</b> 30% holdout
-        </div>
-        """, unsafe_allow_html=True)
+    metrics = compute_metrics(y_test, y_prob, sex_test, threshold)
+    passed, rationale = evaluate_audit(metrics, mode_config)
 
-    with col_right:
-        metrics = compute_metrics(y_test, y_prob, sex_test, threshold)
-        passed, rationale = evaluate_audit(metrics, mode_config)
+    with col_mid:
+        st.markdown('<div class="section-label">Audit Outcome</div>', unsafe_allow_html=True)
 
-        # Audit result
-        result_class = "result-pass" if passed else "result-fail"
-        result_label = "✓ AUDIT PASSED" if passed else "✗ AUDIT FAILED"
+        result_color = "#4a8a4a" if passed else "#8a4a30"
+        result_label = "PASSED" if passed else "FAILED"
+        result_icon = "✓" if passed else "✗"
 
         st.markdown(f"""
-        <div class="{result_class}">
-            <div class="result-label">{result_label} — {selected_mode}</div>
-            <div class="result-rationale">{rationale}</div>
+        <div style="text-align:center; padding:2rem 1rem; border:1px solid {result_color};
+                    background:{'rgba(74,138,74,0.05)' if passed else 'rgba(138,74,48,0.05)'};
+                    margin-bottom:1.2rem;">
+            <div style="font-size:2.8rem; color:{result_color}; font-weight:300;">{result_icon}</div>
+            <div style="font-size:1.3rem; font-weight:700; color:{result_color};
+                        letter-spacing:.1em;">{result_label}</div>
+            <div style="font-size:0.75rem; color:#6d6560; margin-top:.4rem;
+                        text-transform:uppercase; letter-spacing:.1em;">{selected_mode}</div>
         </div>
         """, unsafe_allow_html=True)
 
-        # Key metrics
-        m1, m2, m3, m4 = st.columns(4)
+        st.markdown('<div class="section-label">Metrics</div>', unsafe_allow_html=True)
+        m1, m2 = st.columns(2)
         with m1:
             st.markdown(f'<div class="metric-label">Accuracy</div>'
                         f'<div class="metric-value">{metrics["accuracy"]:.3f}</div>',
                         unsafe_allow_html=True)
-        with m2:
-            st.markdown(f'<div class="metric-label">Parity Gap</div>'
+            st.markdown(f'<div class="metric-label" style="margin-top:.6rem;">Parity Gap</div>'
                         f'<div class="metric-value">{metrics["dp_gap"]:.3f}</div>',
                         unsafe_allow_html=True)
-        with m3:
+        with m2:
             st.markdown(f'<div class="metric-label">Equal Opp. Gap</div>'
                         f'<div class="metric-value">{metrics["eo_gap"]:.3f}</div>',
                         unsafe_allow_html=True)
-        with m4:
-            st.markdown(f'<div class="metric-label">False Neg. Rate</div>'
+            st.markdown(f'<div class="metric-label" style="margin-top:.6rem;">False Neg. Rate</div>'
                         f'<div class="metric-value">{metrics["fnr"]:.3f}</div>',
                         unsafe_allow_html=True)
 
+    with col_right:
+        st.markdown('<div class="section-label">Audit Rationale</div>', unsafe_allow_html=True)
+
+        st.markdown(f"""
+        <div style="padding:1.4rem; border-left:3px solid {'#4a8a4a' if passed else '#8a4a30'};
+                    background:white; min-height:140px;">
+            <div style="font-family:'Georgia', serif; font-size:1.05rem; line-height:1.8;
+                        color:#1a1410; font-style:italic;">
+                "{result_icon} {result_label} under {selected_mode} framework."
+            </div>
+            <div style="font-size:0.85rem; color:#3a3530; margin-top:.8rem; line-height:1.75;">
+                {rationale}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
         st.markdown("<br>", unsafe_allow_html=True)
         st.plotly_chart(
-            plot_confusion_matrix(metrics["confusion_matrix"],
-                                  f"Prediction outcomes — {selected_mode}"),
+            plot_confusion_matrix(metrics["confusion_matrix"], ""),
             use_container_width=True
         )
 
-    # Comparison section
+    # ── COMPARISON ──
     st.markdown("---")
-    st.markdown('<div class="section-label">Framework Comparison — All Governance Modes</div>',
+    st.markdown('<div class="section-label">All Regimes — Same Model</div>',
                 unsafe_allow_html=True)
     st.markdown(
-        '<p style="font-size:0.85rem; color:#6d6560; margin-bottom:1rem;">'
-        'The same model evaluated under each governance mode simultaneously. '
-        'Threshold values are set by each mode\'s institutional priorities.</p>',
+        '<p style="font-size:0.83rem; color:#6d6560; margin-bottom:1rem;">'
+        'Each regime applies different institutional assumptions. '
+        'Threshold values are set by regime priorities, not the model.</p>',
         unsafe_allow_html=True
     )
 
@@ -449,7 +476,6 @@ def main():
         p, r = evaluate_audit(m, cfg)
         all_pass_fail[mode_name] = (p, r)
 
-    # Pass/fail summary
     pf_cols = st.columns(4)
     for i, (mode_name, (p, r)) in enumerate(all_pass_fail.items()):
         with pf_cols[i]:
@@ -457,11 +483,13 @@ def main():
             label = "PASS" if p else "FAIL"
             st.markdown(f"""
             <div style="border:1px solid {color}; border-left:3px solid {color};
-                        padding:0.8rem; background:white;">
+                        padding:.8rem; background:white;">
                 <div style="font-size:0.7rem; text-transform:uppercase;
-                            letter-spacing:0.1em; color:#6d6560;">{mode_name}</div>
+                            letter-spacing:.1em; color:#6d6560;">{mode_name}</div>
                 <div style="font-size:1.1rem; font-weight:600; color:{color};
-                            margin-top:0.3rem;">{label}</div>
+                            margin-top:.3rem;">{label}</div>
+                <div style="font-size:0.72rem; color:#6d6560; margin-top:.3rem;
+                            line-height:1.5;">{r[:80]}...</div>
             </div>
             """, unsafe_allow_html=True)
 
